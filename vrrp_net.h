@@ -72,6 +72,7 @@ struct vrrp_if {
 	char *ifname;
 	int mtu;
 	union vrrp_ipx_addr ipx;
+    int vmware;
 };
 
 

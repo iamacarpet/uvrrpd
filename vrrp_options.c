@@ -61,6 +61,7 @@ static void vrrp_usage(void)
 		"  -s, --script              Path of hook script (default /etc/uvrrpd/uvrrpd-switch.sh)\n"
 		"  -F  --pidfile name        Create pid file 'name'\n"
 		"                            Default /var/run/uvrrp_${vrid}.pid\n"
+        "  -V  --vmware              VMWare Compatibility (use interface MAC rather than macvlan)"
 		"  -d, --debug\n" "  -h, --help\n");
 }
 
@@ -85,13 +86,14 @@ int vrrp_options(struct vrrp *vrrp, struct vrrp_net *vnet, int argc,
 		{"foreground", no_argument, 0, 'f'},
 		{"script", required_argument, 0, 's'},
 		{"pidfile", required_argument, 0, 'F'},
+        {"vmware", no_argument, 0, 'V'},
 		{"debug", no_argument, 0, 'd'},
 		{"help", no_argument, 0, 'h'},
 		{NULL, 0, 0, 0}
 	};
 
 	while ((optc =
-		getopt_long(argc, argv, "v:i:p:t:P:r:6a:fs:F:dh", opts,
+		getopt_long(argc, argv, "v:i:p:t:P:r:6a:fs:F:Vdh", opts,
 			    NULL)) != EOF) {
 		switch (optc) {
 
@@ -198,7 +200,16 @@ int vrrp_options(struct vrrp *vrrp, struct vrrp_net *vnet, int argc,
 		case 'F':
 			pidfile_name = strndup(optarg, NAME_MAX + PATH_MAX);
 			break;
-
+                
+            /* VMWare Compatibility */
+        case 'V':
+            vnet->vif.vmware = 1;
+            if ( vnet->vif.vmware < 1 ){
+                perror("unable to set vmware bit");
+                return -1;
+            }
+            break;
+            
 			/* debug */
 		case 'd':
 			loglevel = strndup("debug", 6);
