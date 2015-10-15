@@ -31,6 +31,7 @@
 #include "vrrp.h"
 #include "vrrp_net.h"
 #include "vrrp_rfc.h"
+#include "vrrp_mac.h"
 
 /* VRRP multicast group */
 #define INADDR_VRRP_GROUP   0xe0000012	/* 224.0.0.18 */
@@ -62,7 +63,7 @@ static struct ether_header vrrp_adv_eth = {
  * vrrp_adv_eth_build() - build VRRP adv ethernet header
  */
 static int vrrp_adv_eth_build(struct iovec *iov, const uint8_t vrid,
-			      const int family)
+			      const int family, struct vrrp_net *vnet)
 {
 	iov->iov_base = malloc(sizeof(struct ether_header));
 	struct ether_header *hdr = iov->iov_base;
@@ -73,7 +74,26 @@ static int vrrp_adv_eth_build(struct iovec *iov, const uint8_t vrid,
 	}
 
 	memcpy(hdr, &vrrp_adv_eth, sizeof(struct ether_header));
-	hdr->ether_shost[5] = vrid;
+	
+    if ( vnet->vif.vmware > 0 ){
+        unsigned char mac[6];
+        
+        int status = mac_get_binary(vnet->vif.ifname, mac);
+        
+        if (status > 0){
+            log_error("vrid %d :: unable to get MAC address for vmware compatibility.", vnet->vrid);
+        }
+        
+        hdr->ether_shost[0] = mac[0];
+        hdr->ether_shost[1] = mac[1];
+        hdr->ether_shost[2] = mac[2];
+        hdr->ether_shost[3] = mac[3];
+        hdr->ether_shost[4] = mac[4];
+        hdr->ether_shost[5] = mac[5];
+    } else {
+        hdr->ether_shost[5] = vrid;
+    }
+    
 	if (family == AF_INET)
 		hdr->ether_type = htons(ETH_P_IP);
 	else	/* AF_INET6 */
@@ -264,7 +284,7 @@ int vrrp_adv_init(struct vrrp_net *vnet, const struct vrrp *vrrp)
 {
 	int status = -1;
 
-	status = vrrp_adv_eth_build(&vnet->__adv[0], vnet->vrid, vnet->family);
+	status = vrrp_adv_eth_build(&vnet->__adv[0], vnet->vrid, vnet->family, vnet);
 
 	if (vnet->family == AF_INET)
 		status |= vrrp_adv_ip4_build(&vnet->__adv[1], vnet);

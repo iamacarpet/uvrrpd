@@ -32,6 +32,7 @@
 #include "log.h"
 #include "vrrp.h"
 #include "vrrp_net.h"
+#include "vrrp_mac.h"
 
 #define IN6ADDR_MCAST "ff02::1"
 
@@ -65,7 +66,7 @@ struct pshdr_ip6 {
 /**
  * vrrp_na_eth_build()
  */
-static int vrrp_na_eth_build(struct iovec *iov, const uint8_t vrid)
+static int vrrp_na_eth_build(struct iovec *iov, const uint8_t vrid, struct vrrp_net *vnet)
 {
 	iov->iov_base = malloc(sizeof(struct ether_header));
 
@@ -78,7 +79,25 @@ static int vrrp_na_eth_build(struct iovec *iov, const uint8_t vrid)
 
 	memcpy(hdr, &vrrp_na_eth, sizeof(struct ether_header));
 
-	hdr->ether_shost[5] = vrid;
+	if ( vnet->vif.vmware > 0 ){
+        unsigned char mac[6];
+        
+        int status = mac_get_binary(vnet->vif.ifname, mac);
+        
+        if (status > 0){
+            log_error("vrid %d :: unable to get MAC address for vmware compatibility.", vnet->vrid);
+        }
+        
+        hdr->ether_shost[0] = mac[0];
+        hdr->ether_shost[1] = mac[1];
+        hdr->ether_shost[2] = mac[2];
+        hdr->ether_shost[3] = mac[3];
+        hdr->ether_shost[4] = mac[4];
+        hdr->ether_shost[5] = mac[5];
+    } else {
+        hdr->ether_shost[5] = vrid;
+    }
+    
 	hdr->ether_type = htons(ETH_P_IPV6);
 
 	iov->iov_len = ETHDR_SIZE;
@@ -211,7 +230,7 @@ int vrrp_na_init(struct vrrp_net *vnet)
 	struct vrrp_ip *vip_ptr = NULL;
 
 	list_for_each_entry_reverse(vip_ptr, &vnet->vip_list, iplist) {
-		status = vrrp_na_eth_build(&vip_ptr->__topology[0], vnet->vrid);
+		status = vrrp_na_eth_build(&vip_ptr->__topology[0], vnet->vrid, vnet);
 		status |=
 		    vrrp_na_ip6_build(&vip_ptr->__topology[1], vip_ptr, vnet);
 		status |= vrrp_na_build(&vip_ptr->__topology[2], vip_ptr, vnet);

@@ -30,6 +30,7 @@
 #include "log.h"
 #include "vrrp.h"
 #include "vrrp_net.h"
+#include "vrrp_mac.h"
 
 #define ETHDR_SIZE sizeof(struct ether_header)
 
@@ -63,7 +64,7 @@ struct arphdr_eth {
 /**
  * vrrp_arp_eth_build() 
  */
-static int vrrp_arp_eth_build(struct iovec *iov, const uint8_t vrid)
+static int vrrp_arp_eth_build(struct iovec *iov, const uint8_t vrid, struct vrrp_net *vnet)
 {
 	iov->iov_base = malloc(sizeof(struct ether_header));
 
@@ -75,8 +76,26 @@ static int vrrp_arp_eth_build(struct iovec *iov, const uint8_t vrid)
 	}
 
 	memcpy(hdr, &vrrp_arp_eth, sizeof(struct ether_header));
-
-	hdr->ether_shost[5] = vrid;
+    
+    if ( vnet->vif.vmware > 0 ){
+        unsigned char mac[6];
+        
+        int status = mac_get_binary(vnet->vif.ifname, mac);
+        
+        if (status > 0){
+            log_error("vrid %d :: unable to get MAC address for vmware compatibility.", vnet->vrid);
+        }
+        
+        hdr->ether_shost[0] = mac[0];
+        hdr->ether_shost[1] = mac[1];
+        hdr->ether_shost[2] = mac[2];
+        hdr->ether_shost[3] = mac[3];
+        hdr->ether_shost[4] = mac[4];
+        hdr->ether_shost[5] = mac[5];
+    } else {
+        hdr->ether_shost[5] = vrid;
+    }
+    
 	hdr->ether_type = htons(ETHERTYPE_ARP);
 
 	iov->iov_len = ETHDR_SIZE;
@@ -140,12 +159,29 @@ static int vrrp_arp_vrrp_build(struct iovec *iov, struct vrrp_ip *vip,
 		return -1;
 	}
 
-	arpeth->ar_sha[0] = 0x00;
-	arpeth->ar_sha[1] = 0x00;
-	arpeth->ar_sha[2] = 0x5e;
-	arpeth->ar_sha[3] = 0x00;
-	arpeth->ar_sha[4] = 0x01;
-	arpeth->ar_sha[5] = vnet->vrid;
+    if ( vnet->vif.vmware > 0 ){
+        unsigned char mac[6];
+        
+        int status = mac_get_binary(vnet->vif.ifname, mac);
+        
+        if (status > 0){
+            log_error("vrid %d :: unable to get MAC address for vmware compatibility.", vnet->vrid);
+        }
+        
+        arpeth->ar_sha[0] = mac[0];
+        arpeth->ar_sha[1] = mac[1];
+        arpeth->ar_sha[2] = mac[2];
+        arpeth->ar_sha[3] = mac[3];
+        arpeth->ar_sha[4] = mac[4];
+        arpeth->ar_sha[5] = mac[5];
+    } else {
+        arpeth->ar_sha[0] = 0x00;
+        arpeth->ar_sha[1] = 0x00;
+        arpeth->ar_sha[2] = 0x5e;
+        arpeth->ar_sha[3] = 0x00;
+        arpeth->ar_sha[4] = 0x01;
+        arpeth->ar_sha[5] = vnet->vrid;
+    }
 
 	memcpy(arpeth->ar_sip, &vip->ip_addr.s_addr, IP_ALEN);
 	memset(arpeth->ar_tha, 0xFF, ETH_ALEN);
@@ -167,11 +203,9 @@ int vrrp_arp_init(struct vrrp_net *vnet)
 	struct vrrp_ip *vip_ptr = NULL;
 
 	list_for_each_entry_reverse(vip_ptr, &vnet->vip_list, iplist) {
-		status =
-		    vrrp_arp_eth_build(&vip_ptr->__topology[0], vnet->vrid);
+		status  = vrrp_arp_eth_build(&vip_ptr->__topology[0], vnet->vrid, vnet);
 		status |= vrrp_arp_build(&vip_ptr->__topology[1], vnet->vrid);
-		status |=
-		    vrrp_arp_vrrp_build(&vip_ptr->__topology[2], vip_ptr, vnet);
+		status |= vrrp_arp_vrrp_build(&vip_ptr->__topology[2], vip_ptr, vnet);
 	}
 
 	return status;
