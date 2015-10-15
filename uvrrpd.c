@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
         Log if we've got VMWare compatibility enabled or not.
         Level of WARNING because it changed behaviour a lot, quite important for problem solving.
     --------*/
-    if ( vnet->vif.vmware > 0 ){
+    if ( vnet.vif.vmware > 0 ){
         log_warning("VMWare Compatibility is Enabled!");
     } else {
         log_warning("VMWare Compatibility is Disabled!");
