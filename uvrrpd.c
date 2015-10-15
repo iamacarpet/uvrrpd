@@ -80,6 +80,16 @@ int main(int argc, char *argv[])
 
 	/* logs */
 	log_open("uvrrpd", (char const *) loglevel);
+    
+    /*--------
+        Log if we've got VMWare compatibility enabled or not.
+        Level of WARNING because it changed behaviour a lot, quite important for problem solving.
+    --------*/
+    if ( vnet->vif.vmware > 0 ){
+        log_warning("VMWare Compatibility is Enabled!");
+    } else {
+        log_warning("VMWare Compatibility is Disabled!");
+    }
 
 	/* open sockets */
 	if ((vrrp_net_socket(&vnet) != 0) || (vrrp_net_socket_xmit(&vnet) != 0))
