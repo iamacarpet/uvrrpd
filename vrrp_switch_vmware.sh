@@ -9,6 +9,21 @@ naddr=$6
 family=$7
 ips=$8
 
+# contains(string, substring)
+#
+# Returns 0 if the specified string contains the specified substring,
+# otherwise returns 1.
+contains() {
+    string="$1"
+    substring="$2"
+    if test "${string#*$substring}" != "$string"
+    then
+        return 0    # $substring is in $string
+    else
+        return 1    # $substring is not in $string
+    fi
+}
+
 echo "state\t\t$state
 vrid\t\t$vrid
 ifname\t\t$ifname
@@ -35,10 +50,20 @@ case "$state" in
         IFS=','
 
         for ip in $ips; do
-            ip -$family addr add $ip dev $ifname 
-            sysctl -w net/ipv6/conf/$ifname/autoconf=0
-            sysctl -w net/ipv6/conf/$ifname/accept_ra=0
-            sysctl -w net/ipv6/conf/$ifname/forwarding=1
+            if contains ${ip} "|"; then
+                interface=$(echo ${ip} | cut -d"|" -f1)
+                ipaddress=$(echo ${ip} | cut -d"|" -f2)
+                
+                ip -$family addr add $ipaddress dev $interface 
+                sysctl -w net/ipv6/conf/$interface/autoconf=0
+                sysctl -w net/ipv6/conf/$interface/accept_ra=0
+                sysctl -w net/ipv6/conf/$interface/forwarding=1
+            else
+                ip -$family addr add $ip dev $ifname 
+                sysctl -w net/ipv6/conf/$ifname/autoconf=0
+                sysctl -w net/ipv6/conf/$ifname/accept_ra=0
+                sysctl -w net/ipv6/conf/$ifname/forwarding=1
+            fi;
         done
         
         IFS=$OIFS
@@ -51,7 +76,14 @@ case "$state" in
         IFS=','
 
         for ip in $ips; do
-            ip -$family addr del $ip dev $ifname
+            if contains ${ip} "|"; then
+                interface=$(echo ${ip} | cut -d"|" -f1)
+                ipaddress=$(echo ${ip} | cut -d"|" -f2)
+                
+                ip -$family addr del $ipaddress dev $interface
+            else
+                ip -$family addr del $ip dev $ifname
+            fi;
         done
         
         IFS=$OIFS

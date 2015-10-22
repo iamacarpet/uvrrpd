@@ -66,7 +66,7 @@ struct pshdr_ip6 {
 /**
  * vrrp_na_eth_build()
  */
-static int vrrp_na_eth_build(struct iovec *iov, const uint8_t vrid, struct vrrp_net *vnet)
+static int vrrp_na_eth_build(struct iovec *iov, const uint8_t vrid, struct vrrp_net *vnet, struct vrrp_ip *vip)
 {
 	iov->iov_base = malloc(sizeof(struct ether_header));
 
@@ -82,7 +82,12 @@ static int vrrp_na_eth_build(struct iovec *iov, const uint8_t vrid, struct vrrp_
 	if ( vnet->vif.vmware > 0 ){
         unsigned char mac[6];
         
-        int status = mac_get_binary(vnet->vif.ifname, mac);
+        int status;
+        if (vip->diff_iface > 0){
+            status = mac_get_binary(vip->ifname, mac);
+        } else {
+            status = mac_get_binary(vnet->vif.ifname, mac);
+        }
         
         if (status > 0){
             log_error("vrid %d :: unable to get MAC address for vmware compatibility.", vnet->vrid);
@@ -212,8 +217,22 @@ int vrrp_na_send(struct vrrp_net *vnet)
 
 	/* we have to send one na by vip */
 	list_for_each_entry_reverse(vip_ptr, &vnet->vip_list, iplist) {
-		vrrp_net_send(vnet, vip_ptr->__topology,
-			      ARRAY_SIZE(vip_ptr->__topology));
+		if (vip_ptr->diff_iface > 0){
+            struct vrrp_net *temp_vnet = malloc(sizeof(struct vrrp_net));
+            if (temp_vnet == NULL){
+                log_error("vrid %d :: malloc - %m", vnet->vrid);
+                return -1;
+            }
+            memcpy( temp_vnet, vnet, sizeof(struct vrrp_net) );
+        
+            temp_vnet->vif.ifname = vip_ptr->ifname;
+            
+            vrrp_net_send(temp_vnet, vip_ptr->__topology, ARRAY_SIZE(vip_ptr->__topology));
+            
+            free( temp_vnet );
+        } else {
+            vrrp_net_send(vnet, vip_ptr->__topology, ARRAY_SIZE(vip_ptr->__topology));
+        }
 	}
 
 	return 0;
@@ -230,9 +249,8 @@ int vrrp_na_init(struct vrrp_net *vnet)
 	struct vrrp_ip *vip_ptr = NULL;
 
 	list_for_each_entry_reverse(vip_ptr, &vnet->vip_list, iplist) {
-		status = vrrp_na_eth_build(&vip_ptr->__topology[0], vnet->vrid, vnet);
-		status |=
-		    vrrp_na_ip6_build(&vip_ptr->__topology[1], vip_ptr, vnet);
+		status  = vrrp_na_eth_build(&vip_ptr->__topology[0], vnet->vrid, vnet, vip_ptr);
+		status |= vrrp_na_ip6_build(&vip_ptr->__topology[1], vip_ptr, vnet);
 		status |= vrrp_na_build(&vip_ptr->__topology[2], vip_ptr, vnet);
 	}
 

@@ -28,6 +28,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <spawn.h>
+#include <net/if.h>
 
 #include "vrrp.h"
 #include "vrrp_exec.h"
@@ -38,8 +39,8 @@
  * (255 IPv6 addresses might be specified)
  * 1 IPv6 = 45 bytes in a string format
  */
-#define SCRIPT_ARG_MAX INET6_ADDRSTRLEN * NI_MAXHOST
-#define ADDRSTRLEN INET6_ADDRSTRLEN 
+#define SCRIPT_ARG_MAX (IFNAMSIZ + 1 + INET6_ADDRSTRLEN) * NI_MAXHOST
+#define ADDRSTRLEN (IFNAMSIZ + 1 + INET6_ADDRSTRLEN)
 #define SCRIPT_NARGS 10
 
 /**
@@ -92,9 +93,11 @@ static int vrrp_build_args(const char *scriptname, char **argv,
 			argv[argv_ips][plen] = ',';
 
 		char straddr[ADDRSTRLEN];
-		snprintf(argv[argv_ips] + strlen(argv[argv_ips]),
-			 SCRIPT_ARG_MAX - plen + 1, "%s",
-			 vnet->ipx_to_str(&vip_ptr->ipx, straddr));
+		if (vip_ptr->diff_iface > 0){
+            snprintf(argv[argv_ips] + strlen(argv[argv_ips]), SCRIPT_ARG_MAX - plen + 1, "%s|%s", vip_ptr->ifname, vnet->ipx_to_str(&vip_ptr->ipx, straddr));
+        } else {
+            snprintf(argv[argv_ips] + strlen(argv[argv_ips]), SCRIPT_ARG_MAX - plen + 1, "%s", vnet->ipx_to_str(&vip_ptr->ipx, straddr));
+        }
 	}
 
 	/* the last elmt must be NULL */

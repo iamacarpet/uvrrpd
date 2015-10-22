@@ -223,21 +223,37 @@ int vrrp_net_vip_set(struct vrrp_net *vnet, const char *ip)
 		log_error("vrid %d :: malloc - %m", vnet->vrid);
 		return -1;
 	}
+    
+    int ifstatus = -1;
+    
+    char *tmpip;
+    ifstatus = split_ip_interface(ip, &vip->ifname, &tmpip);
+    if ( ifstatus == 1 ){
+        vip->diff_iface = 1;
+        ifstatus = 0;
+    } else {
+        tmpip = calloc(strlen(ip)+1, sizeof(char));
+        if (tmpip == NULL){
+            log_error("vrid %d :: malloc - %m", vnet->vrid);
+            return -1;
+        }
+        strcpy(tmpip, ip);
+    }
 
 	/* split ip / netmask */
 	int status = -1;
 
 	if (vnet->family == AF_INET)
 		status =
-		    split_ip_netmask(vnet->family, ip, &vip->ip_addr,
+		    split_ip_netmask(vnet->family, tmpip, &vip->ip_addr,
 				     &vip->netmask);
 
 	if (vnet->family == AF_INET6)
 		status =
-		    split_ip_netmask(vnet->family, ip, &vip->ip_addr6,
+		    split_ip_netmask(vnet->family, tmpip, &vip->ip_addr6,
 				     &vip->netmask);
 
-	if (status != 0) {
+	if (status != 0 || ifstatus != 0) {
 		fprintf(stderr, "vrid %d :: invalid IP addr %s", vnet->vrid,
 			ip);
 		free(vip);

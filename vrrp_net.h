@@ -60,6 +60,8 @@ struct vrrp;
 struct vrrp_ip {
 	union vrrp_ipx_addr ipx;
 	uint8_t netmask;
+    int diff_iface;
+    char *ifname;
 	struct list_head iplist;
 	/* internal buffer for topology update pkt */
 	struct iovec __topology[3];

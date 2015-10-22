@@ -32,6 +32,7 @@
 #include <limits.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 #include "log.h"
 
 /**
@@ -173,6 +174,63 @@ static inline int split_ip_netmask(int family,
 	}
 
 	return 0;
+}
+
+static inline int split_ip_interface(const char *str, char **iface, char **newip){
+    // Copy string into temporary memory.
+	char *tempstr = calloc(strlen(str)+1, sizeof(char));
+	if (tempstr == NULL){
+		return -1;
+	}
+	strcpy(tempstr, str);
+	
+    // Create pointer for parts of tempstr.
+	char *pch;
+
+    // Try and split, see if we've got an interface name.
+	pch = strtok (tempstr,"|");
+	if (pch != NULL) {
+        // Copy iface to memory for our return.
+		*iface = calloc(strlen(pch)+1, sizeof(char));
+		if (*iface == NULL){
+            free(tempstr);
+            log_error("malloc error processing ip %s", str);
+			return -1;
+		}
+		strcpy(*iface,pch);
+
+        // Get the remainder of the IP.
+		pch = strtok (NULL,"|");
+		if (pch != NULL) {
+			*newip = calloc(strlen(pch)+1, sizeof(char));
+			if (*newip == NULL){
+				return -1;
+			}
+			strcpy(*newip,pch);
+            
+            // Finally, now we know we've got two parts,
+            // check if the interface we got is valid.
+            unsigned int ifindex = if_nametoindex(*iface);
+            if (ifindex == 0) {
+                // Invalid, free and exit.
+                log_error("Invalid Interface: %s", *iface);
+                free(tempstr);
+                free(*iface);
+                free(*newip);
+                return -1;
+            }
+            
+            free(tempstr);
+			return 1;
+		} else {
+            free(tempstr);
+            free(*iface);
+			return 0;
+		}
+	} else {
+        free(tempstr);
+		return 0;
+	}
 }
 
 
