@@ -46,6 +46,8 @@ static void vrrp_usage(void)
 		"  -v, --vrid vrid           Virtual router identifier\n"
 		"  -i, --interface iface     Interface\n"
 		"  VIP                       Virtual IP(s), 1 to 255 VIPs\n\n"
+        "   OR
+        "  INTERFACE|VIP             for VIPs on additional interfaces."
 		"Optional arguments:\n"
 		"  -p, --priority prio       Priority of VRRP Instance, (0-255, default 100)\n"
 		"  -t, --time delay          Time interval between advertisements\n"
