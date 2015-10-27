@@ -329,7 +329,7 @@ int vrrp_net_listen(struct vrrp_net *vnet, struct vrrp *vrrp)
 			return PKT;
 		else {
 			if (ret > -49){
-				log_error("vrid %d :: %s", vrrp->vrid,
+				log_debug("vrid %d :: %s", vrrp->vrid,
 					"Received an invalid packet");
 				return INVALID;
 			} else {
@@ -377,12 +377,12 @@ int vrrp_net_recv(struct vrrp_net *vnet, const struct vrrp *vrrp)
 
 	/* check len */
 	if (len == -1) {
-		log_error("vrid %d :: invalid pkt", vnet->vrid);
+		log_debug("vrid %d :: invalid pkt", vnet->vrid);
 		return INVALID;
 	}
 
 	if ((len > vnet->vif.mtu) || (len < vnet->adv_getsize(vnet))) {
-		log_error("vrid %d :: invalid pkt len", vnet->vrid);
+		log_debug("vrid %d :: invalid pkt len", vnet->vrid);
 		return INVALID;
 	}
 

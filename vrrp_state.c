@@ -144,7 +144,7 @@ int vrrp_state_backup(struct vrrp *vrrp, struct vrrp_net *vnet)
 		break;
 
 	case INVALID:
-		log_warning("vrid %d :: %s %s, %s", vrrp->vrid,
+		log_debug("vrid %d :: %s %s, %s", vrrp->vrid,
 			    "receive an invalid advertisement packet from",
 			    vrrp_adv_addr_to_str(vnet, straddr), "ignore it");
 
@@ -257,7 +257,7 @@ int vrrp_state_master(struct vrrp *vrrp, struct vrrp_net *vnet)
 		break;
 
 	case INVALID:
-		log_warning("vrid %d :: invalid event", vrrp->vrid);
+		log_debug("vrid %d :: invalid event", vrrp->vrid);
 		break;
 
 	case OTHERVRID:
