@@ -176,7 +176,7 @@ int vrrp_state_master(struct vrrp *vrrp, struct vrrp_net *vnet)
 		vrrp_adv_send(vnet);
          
         // If we're using VMWare compat & not a fixed MAC, send lots of ARPs so we don't get a confused gateway.
-        if ( vnet.vif.vmware > 0 ){
+        if ( vnet->vif.vmware > 0 ){
             if (vnet->family == AF_INET)
                 vrrp_arp_send(vnet);
             else if (vnet->family == AF_INET6)
