@@ -174,6 +174,15 @@ int vrrp_state_master(struct vrrp *vrrp, struct vrrp_net *vnet)
 		/* adv_timer expired, time to send another */
 		log_info("vrid %d :: %s", vrrp->vrid, "adv_timer expired");
 		vrrp_adv_send(vnet);
+         
+        // If we're using VMWare compat & not a fixed MAC, send lots of ARPs so we don't get a confused gateway.
+        if ( vnet.vif.vmware > 0 ){
+            if (vnet->family == AF_INET)
+                vrrp_arp_send(vnet);
+            else if (vnet->family == AF_INET6)
+                vrrp_na_send(vnet);
+        }
+        
 		VRRP_SET_ADV_TIMER(vrrp);
 		break;
 
